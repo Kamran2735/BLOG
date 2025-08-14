@@ -2,16 +2,22 @@
 import { notFound } from 'next/navigation';
 import BlogHead from '@/components/BlogHead';
 import BlogContent from '@/components/BlogContent';
-import articles from '@/data/articles.json'; // create this file (example schema below)
+import BlogInteraction  from '@/components/BlogInteraction';
+import BlogAuthor from '@/components/BlogAuthor';
+import RelatedArticles from '@/components/BlogRelated';
+import rawArticles from '@/data/articles.json';
+
+// Normalize JSON shape (array or { articles: [...] })
+const allArticles = Array.isArray(rawArticles) ? rawArticles : (rawArticles.articles ?? []);
 
 // (Optional) Pre-render all known slugs at build time
 export function generateStaticParams() {
-  return articles.map(({ slug }) => ({ slug }));
+  return allArticles.map(({ slug }) => ({ slug }));
 }
 
 // (Optional) Basic SEO per article
 export function generateMetadata({ params }) {
-  const article = articles.find(a => a.slug === params.slug);
+  const article = allArticles.find(a => a.slug === params.slug);
   if (!article) return { title: 'Article not found' };
 
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || '';
@@ -27,19 +33,15 @@ export function generateMetadata({ params }) {
       url: pageUrl,
       images: article.featuredImage ? [{ url: article.featuredImage }] : [],
     },
-    alternates: {
-      canonical: pageUrl,
-    },
+    alternates: { canonical: pageUrl },
   };
 }
 
 export default function ArticlePage({ params }) {
   const { slug } = params;
-  const article = articles.find(a => a.slug === slug);
-
+  const article = allArticles.find(a => a.slug === slug);
   if (!article) return notFound();
 
-  // Build props for BlogHead
   const blogData = {
     title: article.title,
     slug: article.slug,
@@ -49,21 +51,31 @@ export default function ArticlePage({ params }) {
     featuredImage: article.featuredImage,
     readingTime: article.readingTime,
   };
-
-  // Build props for BlogContent
-  const contentData = {
-    content: article.content || [], // must match your BlogContent schema
+  const currentUser = {
+    id: 'current-user-id', // Replace with actual user ID logic
+    name: 'Current User', // Replace with actual user name logic
+    avatar: '/api/placeholder/40/40', // Placeholder avatar, replace with actual user avatar
   };
-
+  const contentData = { content: article.content || [] };
   const blogUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/articles/${slug}`;
 
   return (
     <main>
       <BlogHead blogData={blogData} />
-      <BlogContent
-        contentData={contentData}
-        blogTitle={article.title}
-        blogUrl={blogUrl}
+      <BlogContent contentData={contentData} blogTitle={article.title} blogUrl={blogUrl} />
+      <BlogInteraction 
+  articleId={article.slug}
+  articleSlug={article.slug}
+  initialData={article} // Pass the full article data
+  currentUser={currentUser}
+/>
+      <BlogAuthor />
+
+      {/* Pass ALL articles down so the child can filter */}
+      <RelatedArticles
+        currentCategory={blogData.category}
+        currentSlug={blogData.slug}
+        articles={allArticles}
       />
     </main>
   );

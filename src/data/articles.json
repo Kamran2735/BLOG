@@ -8,14 +8,94 @@
     "readingTime": "12 min read",
     "featuredImage": "/images/blog/nextjs-blog-hero.jpg",
     "excerpt": "From routing and data modeling to UX flourishes like TOC, code copy, notes, and TL;DR—this guide builds a full-featured blog you can ship.",
+    "interactions": {
+      "reactions": {
+        "likes": 45,
+        "hearts": 24,
+        "laughs": 8,
+        "dislikes": 2
+      },
+      "comments": [
+        {
+          "id": "comment_1755145466924_cmz4ish1f",
+          "userId": "current-user-id",
+          "userName": "Current User",
+          "userAvatar": "/api/placeholder/40/40",
+          "content": "dadada",
+          "timestamp": "2025-08-14T04:24:26.924Z",
+          "likes": 0,
+          "likedBy": [],
+          "replies": [],
+          "parentId": null,
+          "edited": false
+        },
+        {
+          "id": "comment_1691234567890_abc123",
+          "userId": "user456",
+          "userName": "Sarah Chen",
+          "userAvatar": "/api/placeholder/40/40",
+          "content": "This is exactly what I needed! The structured content approach is brilliant. Thanks for sharing this detailed guide.",
+          "timestamp": "2025-08-13T10:30:00Z",
+          "likes": 12,
+          "likedBy": [
+            "user123",
+            "user789",
+            "user111"
+          ],
+          "replies": [
+            {
+              "id": "comment_1691234567891_def456",
+              "userId": "user123",
+              "userName": "John Doe",
+              "userAvatar": "/api/placeholder/40/40",
+              "content": "Glad you found it helpful! The JSON schema approach really does make content management much cleaner.",
+              "timestamp": "2025-08-13T11:15:00Z",
+              "likes": 3,
+              "likedBy": [
+                "user456"
+              ],
+              "parentId": "comment_1691234567890_abc123",
+              "edited": false
+            }
+          ],
+          "edited": false
+        },
+        {
+          "id": "comment_1691234567892_ghi789",
+          "userId": "user789",
+          "userName": "Mike Rodriguez",
+          "userAvatar": "/api/placeholder/40/40",
+          "content": "Quick question - how would you handle dynamic content updates? Like if you wanted to edit an article after publication?",
+          "timestamp": "2025-08-13T14:45:00Z",
+          "likes": 8,
+          "likedBy": [
+            "user123",
+            "user456"
+          ],
+          "replies": [],
+          "edited": false
+        }
+      ],
+      "commentCount": 4,
+      "lastUpdated": "2025-08-14T04:24:27.058Z"
+    },
     "content": [
-      { "type": "heading", "level": 1, "text": "Why Build Your Own Blog System?", "id": "why-build" },
+      {
+        "type": "heading",
+        "level": 1,
+        "text": "Why Build Your Own Blog System?",
+        "id": "why-build"
+      },
       {
         "type": "paragraph",
         "text": "Owning your content pipeline gives you performance, flexibility, and creative control. With Next.js App Router and a clean content schema, you can ship a beautiful blog with modern UX—without heavyweight CMS overhead."
       },
-
-      { "type": "heading", "level": 2, "text": "What We’re Building", "id": "what-were-building" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "What We’re Building",
+        "id": "what-were-building"
+      },
       {
         "type": "list",
         "ordered": false,
@@ -27,15 +107,18 @@
           "Share menu + copy link, reading progress, and code copy UX"
         ]
       },
-
       {
         "type": "note",
         "noteType": "info",
         "title": "Prerequisites",
         "text": "You should be comfortable with React components, the Next.js App Router, and basic Tailwind CSS."
       },
-
-      { "type": "heading", "level": 2, "text": "Folder & File Structure", "id": "structure" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Folder & File Structure",
+        "id": "structure"
+      },
       {
         "type": "paragraph",
         "text": "Keep app routes under <code>src/app</code>, shared UI in <code>src/components</code>, and content data in <code>src/data</code>. Images live under <code>public</code>."
@@ -46,8 +129,12 @@
         "alt": "Project structure diagram showing app, components, and data folders",
         "caption": "A tidy structure makes features like TOC, sharing, and embeds easy to maintain."
       },
-
-      { "type": "heading", "level": 2, "text": "Designing the Content Schema", "id": "schema" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Designing the Content Schema",
+        "id": "schema"
+      },
       {
         "type": "paragraph",
         "text": "Each article entry includes metadata (title, slug, author, category, dates, image) and a <code>content</code> array composed of typed sections. This keeps the renderer simple and extensible."
@@ -61,30 +148,52 @@
           "Model content as small, typed blocks so you can render them predictably."
         ]
       },
-
-      { "type": "quote", "text": "Make the easy path the safe path.", "author": "Engineering Proverb" },
-
-      { "type": "heading", "level": 2, "text": "Rendering Sections Safely", "id": "rendering" },
+      {
+        "type": "quote",
+        "text": "Make the easy path the safe path.",
+        "author": "Engineering Proverb"
+      },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Rendering Sections Safely",
+        "id": "rendering"
+      },
       {
         "type": "paragraph",
         "text": "Restrict section types to known variants (e.g., heading, paragraph, list, quote, code, image, note, faq, tldr, tags). Validate data before rendering and prefer explicit props over free-form HTML to avoid XSS."
       },
-
-      { "type": "heading", "level": 3, "text": "Headings & Table of Contents", "id": "headings-toc" },
+      {
+        "type": "heading",
+        "level": 3,
+        "text": "Headings & Table of Contents",
+        "id": "headings-toc"
+      },
       {
         "type": "paragraph",
         "text": "Your renderer maps H1–H3 into styled headings. The TOC is auto-derived from heading blocks, with scroll-spy highlighting the active section."
       },
-
-      { "type": "code", "language": "javascript", "code": "const extractTOC = (content) => content\n  .filter(s => s.type === 'heading' && s.level <= 3)\n  .map((s, i) => ({ id: s.id || `heading-${i}`, title: s.text, level: s.level }));" },
-
-      { "type": "heading", "level": 3, "text": "Lists (Ordered & Unordered)", "id": "lists" },
+      {
+        "type": "code",
+        "language": "javascript",
+        "code": "const extractTOC = (content) => content\n  .filter(s => s.type === 'heading' && s.level <= 3)\n  .map((s, i) => ({ id: s.id || `heading-${i}`, title: s.text, level: s.level }));"
+      },
+      {
+        "type": "heading",
+        "level": 3,
+        "text": "Lists (Ordered & Unordered)",
+        "id": "lists"
+      },
       {
         "type": "paragraph",
         "text": "Use lists for steps, options, or checkable tasks. Keep items short and scannable. Ordered lists imply sequence; unordered lists group ideas."
       },
-
-      { "type": "heading", "level": 3, "text": "Callouts (Notes)", "id": "callouts" },
+      {
+        "type": "heading",
+        "level": 3,
+        "text": "Callouts (Notes)",
+        "id": "callouts"
+      },
       {
         "type": "note",
         "noteType": "success",
@@ -103,8 +212,12 @@
         "title": "Untrusted HTML",
         "text": "Avoid dangerously setting HTML from user input. Prefer structured blocks and sanitize any HTML you must render."
       },
-
-      { "type": "heading", "level": 2, "text": "Code Blocks with Copy", "id": "code-blocks" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Code Blocks with Copy",
+        "id": "code-blocks"
+      },
       {
         "type": "paragraph",
         "text": "Label code blocks by language and offer a copy button. Keep examples minimal and runnable."
@@ -119,8 +232,12 @@
         "language": "tsx",
         "code": "export default function CopyableSnippet({ code }: { code: string }) {\n  return (\n    <pre className=\"p-4 bg-gray-900 rounded-lg overflow-auto\">\n      <code>{code}</code>\n    </pre>\n  );\n}"
       },
-
-      { "type": "heading", "level": 2, "text": "Images & Captions", "id": "images" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Images & Captions",
+        "id": "images"
+      },
       {
         "type": "paragraph",
         "text": "Use descriptive alt text and concise captions. Consider <code>next/image</code> for optimization; your renderer can still accept a plain URL for flexibility."
@@ -131,8 +248,12 @@
         "alt": "Animated demonstration of TOC scroll-spy highlighting",
         "caption": "A subtle highlight helps readers keep their bearings."
       },
-
-      { "type": "heading", "level": 2, "text": "Performance & DX Tips", "id": "perf" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Performance & DX Tips",
+        "id": "perf"
+      },
       {
         "type": "list",
         "ordered": false,
@@ -143,7 +264,6 @@
           "Measure using the React Profiler before optimizing."
         ]
       },
-
       {
         "id": "faqs",
         "type": "faq",
@@ -162,8 +282,12 @@
           }
         ]
       },
-
-      { "type": "heading", "level": 2, "text": "TL;DR", "id": "tldr" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "TL;DR",
+        "id": "tldr"
+      },
       {
         "type": "tldr",
         "points": [
@@ -173,11 +297,22 @@
           "Guard SSR/CSR differences (e.g., window access)."
         ]
       },
-
-      { "type": "heading", "level": 2, "text": "Tags", "id": "tags" },
+      {
+        "type": "heading",
+        "level": 2,
+        "text": "Tags",
+        "id": "tags"
+      },
       {
         "type": "tags",
-        "tags": ["nextjs", "react", "tutorial", "content-modeling", "ux", "seo"]
+        "tags": [
+          "nextjs",
+          "react",
+          "tutorial",
+          "content-modeling",
+          "ux",
+          "seo"
+        ]
       }
     ]
   }
