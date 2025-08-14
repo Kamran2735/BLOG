@@ -83,15 +83,18 @@ const extractTOC = (content) => {
 }, []);
 
 
-  // Scroll spy for active heading
+// Scroll spy for active heading
   useEffect(() => {
     const handleScroll = () => {
       const headings = document.querySelectorAll('h1, h2, h3');
       let currentHeading = '';
+      const viewportHeight = window.innerHeight;
+      const triggerPoint = viewportHeight * 0.4; // 40% of viewport height
 
       headings.forEach((heading) => {
         const rect = heading.getBoundingClientRect();
-        if (rect.top <= 100) {
+        // Check if heading is above the 40% mark and visible
+        if (rect.top <= triggerPoint && rect.bottom >= 0) {
           currentHeading = heading.id;
         }
       });
@@ -100,6 +103,7 @@ const extractTOC = (content) => {
     };
 
     window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Run once on mount
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
