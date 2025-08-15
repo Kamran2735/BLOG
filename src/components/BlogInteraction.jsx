@@ -67,31 +67,98 @@ const UserInteractions = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Save to API
-  const saveToAPI = async (updatedInteractions) => {
+  // Save reactions to API
+  const saveReactionsToAPI = async (updatedReactions) => {
     if (!articleSlug) return false;
     
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/articles/${articleSlug}/interactions`, {
+      const response = await fetch(`/api/articles/${articleSlug}/reactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ interactions: updatedInteractions }),
+        body: JSON.stringify({ reactions: updatedReactions }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save interactions');
+        throw new Error('Failed to save reactions');
       }
 
       const result = await response.json();
       return result.success;
     } catch (error) {
-      console.error('Error saving interactions:', error);
+      console.error('Error saving reactions:', error);
       return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Save comment to API
+  const saveCommentToAPI = async (commentData) => {
+    if (!articleSlug) return false;
+    
+    try {
+      const response = await fetch(`/api/articles/${articleSlug}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(commentData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save comment');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error saving comment:', error);
+      return false;
+    }
+  };
+
+  // Update comment in API
+  const updateCommentInAPI = async (commentId, updates) => {
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update comment');
+      }
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      return false;
+    }
+  };
+
+  // Delete comment from API
+  const deleteCommentFromAPI = async (commentId) => {
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete comment');
+      }
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      return false;
     }
   };
 
@@ -114,13 +181,7 @@ const UserInteractions = ({
     setShowReactionPicker(false);
 
     // Save to API
-    const updatedInteractions = {
-      reactions: nextReactions,
-      comments,
-      commentCount: comments.reduce((count, c) => count + 1 + (c.replies?.length || 0), 0),
-    };
-
-    await saveToAPI(updatedInteractions);
+    await saveReactionsToAPI(nextReactions);
   };
 
   // Submit comment/reply
@@ -130,148 +191,166 @@ const UserInteractions = ({
     setIsSubmitting(true);
 
     const comment = {
-      id: `comment_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      content: newComment.trim(),
       userId: currentUser.id,
       userName: currentUser.name,
       userAvatar: currentUser.avatar,
-      content: newComment.trim(),
-      timestamp: new Date().toISOString(),
-      likes: 0,
-      likedBy: [],
-      replies: [],
       parentId: replyingTo,
-      edited: false,
     };
 
-    let updatedComments;
-    if (replyingTo) {
-      updatedComments = comments.map((c) =>
-        c.id === replyingTo ? { ...c, replies: [...(c.replies || []), comment] } : c
-      );
+    // Save to API first
+    const savedComment = await saveCommentToAPI(comment);
+    
+    if (savedComment) {
+      // Create the comment object for local state
+      const newCommentObj = {
+        id: savedComment.id,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userAvatar: currentUser.avatar,
+        content: newComment.trim(),
+        timestamp: savedComment.timestamp,
+        likes: 0,
+        likedBy: [],
+        replies: [],
+        parentId: replyingTo,
+        edited: false,
+      };
+
+      // Update local state
+      let updatedComments;
+      if (replyingTo) {
+        updatedComments = comments.map((c) =>
+          c.id === replyingTo ? { ...c, replies: [...(c.replies || []), newCommentObj] } : c
+        );
+      } else {
+        updatedComments = [newCommentObj, ...comments];
+      }
+
+      setComments(updatedComments);
+      setNewComment("");
+      setReplyingTo(null);
     } else {
-      updatedComments = [comment, ...comments];
+      // Handle error - maybe show a toast notification
+      console.error('Failed to save comment');
     }
 
-    setComments(updatedComments);
-    setNewComment("");
-    setReplyingTo(null);
     setIsSubmitting(false);
-
-    // Save to API
-    const commentCount = updatedComments.reduce((count, c) => count + 1 + (c.replies?.length || 0), 0);
-    const updatedInteractions = {
-      reactions,
-      comments: updatedComments,
-      commentCount,
-    };
-
-    await saveToAPI(updatedInteractions);
   };
 
   // Edit comment
   const handleEditComment = async (commentId, newContent) => {
-    const updated = comments.map((c) => {
-      if (c.id === commentId) {
-        return {
-          ...c,
-          content: newContent,
-          edited: true,
-          editedAt: new Date().toISOString(),
-        };
-      }
-      if (c.replies?.length) {
-        return {
-          ...c,
-          replies: c.replies.map((r) =>
-            r.id === commentId
-              ? { ...r, content: newContent, edited: true, editedAt: new Date().toISOString() }
-              : r
-          ),
-        };
-      }
-      return c;
-    });
+    // Update API first
+    const success = await updateCommentInAPI(commentId, { content: newContent });
+    
+    if (success) {
+      // Update local state
+      const updated = comments.map((c) => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            content: newContent,
+            edited: true,
+            editedAt: new Date().toISOString(),
+          };
+        }
+        if (c.replies?.length) {
+          return {
+            ...c,
+            replies: c.replies.map((r) =>
+              r.id === commentId
+                ? { ...r, content: newContent, edited: true, editedAt: new Date().toISOString() }
+                : r
+            ),
+          };
+        }
+        return c;
+      });
 
-    setComments(updated);
+      setComments(updated);
+    }
+
     setEditingComment(null);
     setEditText("");
-
-    // Save to API
-    const updatedInteractions = {
-      reactions,
-      comments: updated,
-      commentCount: updated.reduce((count, c) => count + 1 + (c.replies?.length || 0), 0),
-    };
-
-    await saveToAPI(updatedInteractions);
   };
 
   // Delete comment
   const handleDeleteComment = async (commentId) => {
-    const updated = comments
-      .map((c) =>
-        c.id === commentId
-          ? null
-          : { ...c, replies: c.replies?.filter((r) => r.id !== commentId) || [] }
-      )
-      .filter(Boolean);
+    // Delete from API first
+    const success = await deleteCommentFromAPI(commentId);
+    
+    if (success) {
+      // Update local state
+      const updated = comments
+        .map((c) =>
+          c.id === commentId
+            ? null
+            : { ...c, replies: c.replies?.filter((r) => r.id !== commentId) || [] }
+        )
+        .filter(Boolean);
 
-    setComments(updated);
-
-    // Save to API
-    const updatedInteractions = {
-      reactions,
-      comments: updated,
-      commentCount: updated.reduce((count, c) => count + 1 + (c.replies?.length || 0), 0),
-    };
-
-    await saveToAPI(updatedInteractions);
+      setComments(updated);
+    }
   };
 
   // Like comment
   const handleLikeComment = async (commentId) => {
-    const updated = comments.map((c) => {
-      if (c.id === commentId) {
-        const isLiked = (c.likedBy || []).includes(currentUser.id);
-        return {
-          ...c,
-          likes: isLiked ? Math.max(0, c.likes - 1) : c.likes + 1,
-          likedBy: isLiked
-            ? c.likedBy.filter((id) => id !== currentUser.id)
-            : [...(c.likedBy || []), currentUser.id],
-        };
+    // Find the comment and calculate new values
+    let targetComment = null;
+    let newLikes = 0;
+    let newLikedBy = [];
+    
+    // Find comment in main comments or replies
+    for (const comment of comments) {
+      if (comment.id === commentId) {
+        targetComment = comment;
+        break;
       }
-      if (c.replies?.length) {
-        return {
-          ...c,
-          replies: c.replies.map((r) => {
-            if (r.id === commentId) {
-              const isLiked = (r.likedBy || []).includes(currentUser.id);
-              return {
-                ...r,
-                likes: isLiked ? Math.max(0, r.likes - 1) : r.likes + 1,
-                likedBy: isLiked
-                  ? r.likedBy.filter((id) => id !== currentUser.id)
-                  : [...(r.likedBy || []), currentUser.id],
-              };
-            }
-            return r;
-          }),
-        };
+      if (comment.replies?.length) {
+        const reply = comment.replies.find(r => r.id === commentId);
+        if (reply) {
+          targetComment = reply;
+          break;
+        }
       }
-      return c;
-    });
+    }
 
-    setComments(updated);
+    if (targetComment) {
+      const isLiked = (targetComment.likedBy || []).includes(currentUser.id);
+      newLikes = isLiked ? Math.max(0, targetComment.likes - 1) : targetComment.likes + 1;
+      newLikedBy = isLiked
+        ? targetComment.likedBy.filter((id) => id !== currentUser.id)
+        : [...(targetComment.likedBy || []), currentUser.id];
 
-    // Save to API
-    const updatedInteractions = {
-      reactions,
-      comments: updated,
-      commentCount: updated.reduce((count, c) => count + 1 + (c.replies?.length || 0), 0),
-    };
+      // Update API first
+      const success = await updateCommentInAPI(commentId, { 
+        likes: newLikes, 
+        likedBy: newLikedBy 
+      });
 
-    await saveToAPI(updatedInteractions);
+      if (success) {
+        // Update local state
+        const updated = comments.map((c) => {
+          if (c.id === commentId) {
+            return { ...c, likes: newLikes, likedBy: newLikedBy };
+          }
+          if (c.replies?.length) {
+            return {
+              ...c,
+              replies: c.replies.map((r) => {
+                if (r.id === commentId) {
+                  return { ...r, likes: newLikes, likedBy: newLikedBy };
+                }
+                return r;
+              }),
+            };
+          }
+          return c;
+        });
+
+        setComments(updated);
+      }
+    }
   };
 
   // Filter and sort comments
@@ -339,18 +418,18 @@ const UserInteractions = ({
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Saving Indicator */}
-        {isSaving && (
+        {(isSaving || isSubmitting) && (
           <div className="fixed top-4 right-4 bg-[#39FF14]/20 border border-[#39FF14]/30 rounded-lg px-4 py-2 text-sm text-[#39FF14] z-50">
-            Saving...
+            {isSubmitting ? "Posting..." : "Saving..."}
           </div>
         )}
 
         {/* Compact Action Bar */}
- <div
-   className={`mb-8 transition-all relative z-[60] duration-800 ${
-      animationStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-    }`}
-  >
+        <div
+          className={`mb-8 transition-all relative z-[60] duration-800 ${
+            animationStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
+        >
           <div className="flex items-center justify-between p-4 bg-gray-800/40 backdrop-blur-sm border border-gray-700/30 rounded-xl">
             <div className="flex items-center space-x-6 z-50">
               {/* Quick Reactions */}
@@ -385,8 +464,8 @@ const UserInteractions = ({
                   <span>More</span>
                 </button>
 
-{showReactionPicker && (
-           <div className="absolute left-0 top-full mt-2 bg-gray-800/95 backdrop-blur-sm border border-gray-600/50 rounded-xl shadow-2xl p-3 z-[61] min-w-[200px]">
+                {showReactionPicker && (
+                  <div className="absolute left-0 top-full mt-2 bg-gray-800/95 backdrop-blur-sm border border-gray-600/50 rounded-xl shadow-2xl p-3 z-[61] min-w-[200px]">
                     <div className="grid grid-cols-2 gap-1">
                       {Object.entries(reactionEmojis).map(([type, { emoji, label }]) => (
                         <button
@@ -417,11 +496,11 @@ const UserInteractions = ({
         </div>
 
         {/* Comments Section */}
- <div
-   className={`transition-all duration-800 delay-200 relative z-[10] ${
-      animationStage >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-    }`}
-  >
+        <div
+          className={`transition-all duration-800 delay-200 relative z-[10] ${
+            animationStage >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
+        >
           <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/40 rounded-xl overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-gray-700/40">

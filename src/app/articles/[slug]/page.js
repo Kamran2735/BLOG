@@ -15,7 +15,8 @@ export async function generateStaticParams() {
 
 // Basic SEO per article
 export async function generateMetadata({ params }) {
-  const article = await getArticleBySlug(params.slug);
+  const { slug } = await params; // ⬅️ await params
+  const article = await getArticleBySlug(slug);
   if (!article) return { title: 'Article not found' };
 
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || '';
@@ -36,8 +37,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ArticlePage({ params }) {
-  const { slug } = params;
-  
+  const { slug } = await params; // ⬅️ await params
+
   // Fetch the specific article
   const article = await getArticleBySlug(slug);
   if (!article) return notFound();
@@ -50,15 +51,15 @@ export default async function ArticlePage({ params }) {
     slug: article.slug,
     author: article.author || 'Unknown',
     category: article.category || 'General',
-    publishedDate: article.publishedDate, // This comes from database as published_date
-    featuredImage: article.featuredImage, // This comes from database as featured_image
-    readingTime: article.readingTime, // This comes from database as reading_time
+    publishedDate: article.publishedDate,
+    featuredImage: article.featuredImage,
+    readingTime: article.readingTime,
   };
 
   const currentUser = {
-    id: 'current-user-id', // Replace with actual user ID logic
-    name: 'Current User', // Replace with actual user name logic
-    avatar: '/api/placeholder/40/40', // Placeholder avatar, replace with actual user avatar
+    id: 'current-user-id',
+    name: 'Current User',
+    avatar: '/api/placeholder/40/40',
   };
 
   const contentData = { content: article.content || [] };
@@ -69,14 +70,12 @@ export default async function ArticlePage({ params }) {
       <BlogHead blogData={blogData} />
       <BlogContent contentData={contentData} blogTitle={article.title} blogUrl={blogUrl} />
       <BlogAuthor />
-      <BlogInteraction 
+      <BlogInteraction
         articleId={article.slug}
         articleSlug={article.slug}
-        initialData={article} // Pass the full article data with interactions
+        initialData={article}
         currentUser={currentUser}
       />
-      
-      {/* Pass ALL articles down so the child can filter */}
       <RelatedArticles
         currentCategory={blogData.category}
         currentSlug={blogData.slug}
@@ -87,4 +86,4 @@ export default async function ArticlePage({ params }) {
 }
 
 // Enable ISR for dynamic updates
-export const revalidate = 3600; // Revalidate every hour
+export const revalidate = 3600;

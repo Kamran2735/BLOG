@@ -1,136 +1,130 @@
+// ============================================
 // src/app/api/articles/[slug]/interactions/route.js
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-const ARTICLES_FILE_PATH = path.join(process.cwd(), 'src/data/articles.json');
-
-// Helper to read articles from JSON file
-async function readArticles() {
-  try {
-    const fileContents = await fs.readFile(ARTICLES_FILE_PATH, 'utf8');
-    const data = JSON.parse(fileContents);
-    return Array.isArray(data) ? data : (data.articles ?? []);
-  } catch (error) {
-    console.error('Error reading articles:', error);
-    return [];
-  }
-}
-
-// Helper to write articles to JSON file
-async function writeArticles(articles) {
-  try {
-    await fs.writeFile(ARTICLES_FILE_PATH, JSON.stringify(articles, null, 2), 'utf8');
-    return true;
-  } catch (error) {
-    console.error('Error writing articles:', error);
-    return false;
-  }
-}
+import { supabase } from '@/lib/supabase';
 
 // GET - Fetch interactions for a specific article
 export async function GET(request, { params }) {
   try {
-    const { slug } = params;
-    const articles = await readArticles();
-    const article = articles.find(a => a.slug === slug);
-    
+    const resolvedParams = await params;
+    const { slug } = resolvedParams;
+
+    console.log('Fetching interactions for slug:', slug);
+
+    if (!slug) {
+      return NextResponse.json({ error: 'Article slug is required' }, { status: 400 });
+    }
+
+    // Get article with interactions and comments using regular client
+    const { data: article, error: articleError } = await supabase
+      .from('articles')
+      .select(`
+        id,
+        slug,
+        title,
+        article_interactions (
+          likes,
+          hearts,
+          laughs,
+          dislikes,
+          comment_count,
+          last_updated
+        ),
+        comments (
+          id,
+          user_id,
+          user_name,
+          user_avatar,
+          content,
+          timestamp,
+          likes,
+          liked_by,
+          parent_id,
+          edited
+        )
+      `)
+      .eq('slug', slug)
+      .single();
+
+    if (articleError) {
+      console.error('Article fetch error:', articleError);
+      if (articleError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+      }
+      throw articleError;
+    }
+
     if (!article) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      interactions: article.interactions || {
-        reactions: { likes: 0, hearts: 0, laughs: 0, dislikes: 0 },
-        comments: [],
-        commentCount: 0,
-        lastUpdated: new Date().toISOString()
-      }
+    console.log('Article found:', article.slug);
+    console.log('Raw interactions:', article.article_interactions);
+    console.log('Raw comments count:', article.comments?.length || 0);
+
+    // Transform data to match UserInteractions expected format
+    const interactions = {
+      reactions: {
+        likes: article.article_interactions?.[0]?.likes || 0,
+        hearts: article.article_interactions?.[0]?.hearts || 0,
+        laughs: article.article_interactions?.[0]?.laughs || 0,
+        dislikes: article.article_interactions?.[0]?.dislikes || 0
+      },
+      comments: organizeComments(article.comments || []),
+      commentCount: article.article_interactions?.[0]?.comment_count || 0,
+      lastUpdated: article.article_interactions?.[0]?.last_updated || new Date().toISOString()
+    };
+
+    console.log('Transformed interactions:', interactions);
+
+    return NextResponse.json({ 
+      success: true,
+      interactions 
     });
   } catch (error) {
-    console.error('GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch interactions' }, { status: 500 });
+    console.error('GET interactions error:', error);
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to fetch interactions',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 
-// POST - Update interactions for a specific article
-export async function POST(request, { params }) {
-  try {
-    const { slug } = params;
-    const body = await request.json();
-    const { interactions } = body;
+// Helper function to organize comments into nested structure
+function organizeComments(comments) {
+  const commentsMap = new Map();
+  const rootComments = [];
 
-    if (!interactions) {
-      return NextResponse.json({ error: 'Interactions data required' }, { status: 400 });
-    }
+  // First pass: create map of all comments
+  comments.forEach(comment => {
+    const transformedComment = {
+      id: comment.id,
+      userId: comment.user_id,
+      userName: comment.user_name,
+      userAvatar: comment.user_avatar,
+      content: comment.content,
+      timestamp: comment.timestamp,
+      likes: comment.likes || 0,
+      likedBy: Array.isArray(comment.liked_by) ? comment.liked_by : [],
+      replies: [],
+      parentId: comment.parent_id,
+      edited: comment.edited || false
+    };
+    commentsMap.set(comment.id, transformedComment);
+  });
 
-    const articles = await readArticles();
-    const articleIndex = articles.findIndex(a => a.slug === slug);
-    
-    if (articleIndex === -1) {
-      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
-    }
-
-    // Update the article with new interactions
-    articles[articleIndex] = {
-      ...articles[articleIndex],
-      interactions: {
-        ...articles[articleIndex].interactions,
-        ...interactions,
-        lastUpdated: new Date().toISOString()
+  // Second pass: organize into tree structure
+  commentsMap.forEach(comment => {
+    if (comment.parentId) {
+      const parent = commentsMap.get(comment.parentId);
+      if (parent) {
+        parent.replies.push(comment);
       }
-    };
-
-    const success = await writeArticles(articles);
-    
-    if (!success) {
-      return NextResponse.json({ error: 'Failed to save interactions' }, { status: 500 });
+    } else {
+      rootComments.push(comment);
     }
+  });
 
-    return NextResponse.json({ 
-      success: true, 
-      interactions: articles[articleIndex].interactions 
-    });
-  } catch (error) {
-    console.error('POST error:', error);
-    return NextResponse.json({ error: 'Failed to update interactions' }, { status: 500 });
-  }
-}
-
-// PUT - Replace all interactions for a specific article
-export async function PUT(request, { params }) {
-  try {
-    const { slug } = params;
-    const body = await request.json();
-    const { interactions } = body;
-
-    const articles = await readArticles();
-    const articleIndex = articles.findIndex(a => a.slug === slug);
-    
-    if (articleIndex === -1) {
-      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
-    }
-
-    // Replace interactions completely
-    articles[articleIndex].interactions = {
-      reactions: interactions.reactions || { likes: 0, hearts: 0, laughs: 0, dislikes: 0 },
-      comments: interactions.comments || [],
-      commentCount: interactions.commentCount || 0,
-      lastUpdated: new Date().toISOString()
-    };
-
-    const success = await writeArticles(articles);
-    
-    if (!success) {
-      return NextResponse.json({ error: 'Failed to save interactions' }, { status: 500 });
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      interactions: articles[articleIndex].interactions 
-    });
-  } catch (error) {
-    console.error('PUT error:', error);
-    return NextResponse.json({ error: 'Failed to replace interactions' }, { status: 500 });
-  }
+  return rootComments.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 }
