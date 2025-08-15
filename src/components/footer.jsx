@@ -1,7 +1,14 @@
 "use client";
 import React from 'react';
+import { useState } from 'react';
+import { Twitter, Facebook, Linkedin } from 'lucide-react';
+import { FaDev } from 'react-icons/fa'; // Dev.to icon
+
+
 
 const Footer = () => {
+  const [hoveredSocial, setHoveredSocial] = useState('');
+
   const quickLinks = [
     { name: 'Home', href: '/' },
     { name: 'Articles', href: '/articles' },
@@ -18,10 +25,10 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { name: 'Twitter', href: '#twitter', icon: '🐦' },
-    { name: 'LinkedIn', href: '#linkedin', icon: '💼' },
-    { name: 'GitHub', href: '#github', icon: '💻' },
-    { name: 'Dev.to', href: '#devto', icon: '📝' }
+    { name: 'Twitter', href: 'https://twitter.com/', icon: <Twitter className="w-5 h-5" /> },
+    { name: 'Facebook', href: 'https://facebook.com/', icon: <Facebook className="w-5 h-5" /> },
+    { name: 'Linkedin', href: 'https://linkedin.com/', icon: <Linkedin className="w-5 h-5" /> },
+    { name: 'Dev', href: 'https://dev.to/', icon: <FaDev className="w-5 h-5" /> },
   ];
 
   const currentYear = new Date().getFullYear();
@@ -56,18 +63,28 @@ const Footer = () => {
               </p>
               
               {/* Social Links */}
-              <div className="flex space-x-3">
-                {socialLinks.map((social) => (
-                  <a
-                    key={social.name}
-                    href={social.href}
-                    className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg p-3 transition-all duration-300 hover:border-[#39FF14] hover:bg-[#39FF14]/10 hover:scale-110 group"
-                    title={social.name}
-                  >
-                    <span className="text-lg">{social.icon}</span>
-                  </a>
-                ))}
-              </div>
+<div className="flex space-x-3">
+      {socialLinks.map((social) => (
+        <a
+          key={social.name}
+          href={social.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={social.name}
+          onMouseEnter={() => setHoveredSocial(social.name)}
+          onMouseLeave={() => setHoveredSocial('')}
+          className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+            hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+            transition-all duration-300 ${
+              hoveredSocial === social.name ? 'shadow-lg shadow-[#39FF14]/25' : ''
+            }`}
+        >
+          <div className="group-hover:scale-110 transition-transform duration-300 text-lg">
+            {social.icon}
+          </div>
+        </a>
+      ))}
+    </div>
             </div>
 
             {/* Quick Links */}

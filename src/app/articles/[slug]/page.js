@@ -2,22 +2,20 @@
 import { notFound } from 'next/navigation';
 import BlogHead from '@/components/BlogHead';
 import BlogContent from '@/components/BlogContent';
-import BlogInteraction  from '@/components/BlogInteraction';
+import BlogInteraction from '@/components/BlogInteraction';
 import BlogAuthor from '@/components/BlogAuthor';
 import RelatedArticles from '@/components/BlogRelated';
-import rawArticles from '@/data/articles.json';
+import { getArticleBySlug, getArticleSlugs, getArticles } from '@/lib/database';
 
-// Normalize JSON shape (array or { articles: [...] })
-const allArticles = Array.isArray(rawArticles) ? rawArticles : (rawArticles.articles ?? []);
-
-// (Optional) Pre-render all known slugs at build time
-export function generateStaticParams() {
-  return allArticles.map(({ slug }) => ({ slug }));
+// Pre-render all known slugs at build time
+export async function generateStaticParams() {
+  const slugs = await getArticleSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
-// (Optional) Basic SEO per article
-export function generateMetadata({ params }) {
-  const article = allArticles.find(a => a.slug === params.slug);
+// Basic SEO per article
+export async function generateMetadata({ params }) {
+  const article = await getArticleBySlug(params.slug);
   if (!article) return { title: 'Article not found' };
 
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || '';
@@ -25,10 +23,10 @@ export function generateMetadata({ params }) {
 
   return {
     title: article.title,
-    description: article.excerpt || article.description || '',
+    description: article.excerpt || '',
     openGraph: {
       title: article.title,
-      description: article.excerpt || article.description || '',
+      description: article.excerpt || '',
       type: 'article',
       url: pageUrl,
       images: article.featuredImage ? [{ url: article.featuredImage }] : [],
@@ -37,25 +35,32 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function ArticlePage({ params }) {
+export default async function ArticlePage({ params }) {
   const { slug } = params;
-  const article = allArticles.find(a => a.slug === slug);
+  
+  // Fetch the specific article
+  const article = await getArticleBySlug(slug);
   if (!article) return notFound();
+
+  // Fetch all articles for related articles component
+  const allArticles = await getArticles();
 
   const blogData = {
     title: article.title,
     slug: article.slug,
     author: article.author || 'Unknown',
     category: article.category || 'General',
-    publishedDate: article.publishedDate,
-    featuredImage: article.featuredImage,
-    readingTime: article.readingTime,
+    publishedDate: article.publishedDate, // This comes from database as published_date
+    featuredImage: article.featuredImage, // This comes from database as featured_image
+    readingTime: article.readingTime, // This comes from database as reading_time
   };
+
   const currentUser = {
     id: 'current-user-id', // Replace with actual user ID logic
     name: 'Current User', // Replace with actual user name logic
     avatar: '/api/placeholder/40/40', // Placeholder avatar, replace with actual user avatar
   };
+
   const contentData = { content: article.content || [] };
   const blogUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/articles/${slug}`;
 
@@ -63,14 +68,14 @@ export default function ArticlePage({ params }) {
     <main>
       <BlogHead blogData={blogData} />
       <BlogContent contentData={contentData} blogTitle={article.title} blogUrl={blogUrl} />
-      <BlogInteraction 
-  articleId={article.slug}
-  articleSlug={article.slug}
-  initialData={article} // Pass the full article data
-  currentUser={currentUser}
-/>
       <BlogAuthor />
-
+      <BlogInteraction 
+        articleId={article.slug}
+        articleSlug={article.slug}
+        initialData={article} // Pass the full article data with interactions
+        currentUser={currentUser}
+      />
+      
       {/* Pass ALL articles down so the child can filter */}
       <RelatedArticles
         currentCategory={blogData.category}
@@ -80,3 +85,6 @@ export default function ArticlePage({ params }) {
     </main>
   );
 }
+
+// Enable ISR for dynamic updates
+export const revalidate = 3600; // Revalidate every hour

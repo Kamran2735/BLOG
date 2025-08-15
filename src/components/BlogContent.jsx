@@ -21,6 +21,7 @@ const BlogContent = ({ contentData, blogTitle, blogUrl }) => {
   const [expandedFAQ, setExpandedFAQ] = useState({});
   const [copiedCode, setCopiedCode] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [hoveredSocial, setHoveredSocial] = useState('');
   const contentRef = useRef(null);
   const [progress, setProgress] = useState(0);
 
@@ -474,57 +475,84 @@ console.log(greeting('Developer'));`
             </article>
 
             {/* Share Section */}
-            <div className="mt-16 pt-8 border-t border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-semibold text-white mb-2">Found this helpful?</h4>
-                  <p className="text-gray-400 text-sm">Share it with your network!</p>
-                </div>
-                
-                <div className="relative">
-                  <button
-                    onClick={() => setShowShareMenu(!showShareMenu)}
-                    className="bg-[#39FF14] text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-[#2ecc71] transition-colors duration-300 flex items-center space-x-2"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>Share</span>
-                  </button>
+<div className="mt-16 pt-8 border-t border-gray-700">
+  <div className="flex items-center justify-between">
+    <div>
+      <h4 className="text-lg font-semibold text-white mb-2">Found this helpful?</h4>
+      <p className="text-gray-400 text-sm">Share it with your network!</p>
+    </div>
 
-                  {showShareMenu && (
-                    <div className="absolute right-0 top-full mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl p-2 min-w-40 z-50">
-                      <button
-                        onClick={() => shareUrl('twitter')}
-                        className="w-full flex items-center space-x-2 p-2 hover:bg-gray-700 rounded text-sm transition-colors duration-200"
-                      >
-                        <Twitter className="w-4 h-4 text-blue-400" />
-                        <span>Twitter</span>
-                      </button>
-                      <button
-                        onClick={() => shareUrl('facebook')}
-                        className="w-full flex items-center space-x-2 p-2 hover:bg-gray-700 rounded text-sm transition-colors duration-200"
-                      >
-                        <Facebook className="w-4 h-4 text-blue-600" />
-                        <span>Facebook</span>
-                      </button>
-                      <button
-                        onClick={() => shareUrl('linkedin')}
-                        className="w-full flex items-center space-x-2 p-2 hover:bg-gray-700 rounded text-sm transition-colors duration-200"
-                      >
-                        <Linkedin className="w-4 h-4 text-blue-500" />
-                        <span>LinkedIn</span>
-                      </button>
-                      <button
-                        onClick={() => shareUrl('copy')}
-                        className="w-full flex items-center space-x-2 p-2 hover:bg-gray-700 rounded text-sm transition-colors duration-200"
-                      >
-                        <Link className="w-4 h-4 text-gray-400" />
-                        <span>Copy Link</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+    <div className="flex items-center gap-4">
+      <span className="text-white font-medium">Share:</span>
+
+      {/* Twitter */}
+      <button
+        onClick={() => shareUrl('twitter')}
+        onMouseEnter={() => setHoveredSocial('twitter')}
+        onMouseLeave={() => setHoveredSocial('')}
+        className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+          hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+          transition-all duration-300 ${
+            hoveredSocial === 'twitter' ? 'shadow-lg shadow-[#39FF14]/25' : ''
+          }`}
+      >
+        <div className="group-hover:scale-110 transition-transform duration-300">
+          <Twitter className="w-5 h-5" />
+        </div>
+      </button>
+
+      {/* Facebook */}
+      <button
+        onClick={() => shareUrl('facebook')}
+        onMouseEnter={() => setHoveredSocial('facebook')}
+        onMouseLeave={() => setHoveredSocial('')}
+        className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+          hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+          transition-all duration-300 ${
+            hoveredSocial === 'facebook' ? 'shadow-lg shadow-[#39FF14]/25' : ''
+          }`}
+      >
+        <div className="group-hover:scale-110 transition-transform duration-300">
+          <Facebook className="w-5 h-5" />
+        </div>
+      </button>
+
+      {/* LinkedIn */}
+      <button
+        onClick={() => shareUrl('linkedin')}
+        onMouseEnter={() => setHoveredSocial('linkedin')}
+        onMouseLeave={() => setHoveredSocial('')}
+        className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+          hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+          transition-all duration-300 ${
+            hoveredSocial === 'linkedin' ? 'shadow-lg shadow-[#39FF14]/25' : ''
+          }`}
+      >
+        <div className="group-hover:scale-110 transition-transform duration-300">
+          <Linkedin className="w-5 h-5" />
+        </div>
+      </button>
+
+      {/* Copy Link */}
+      <button
+        onClick={() => shareUrl('copy')}
+        onMouseEnter={() => setHoveredSocial('copy')}
+        onMouseLeave={() => setHoveredSocial('')}
+        className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+          hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+          transition-all duration-300 ${
+            hoveredSocial === 'copy' ? 'shadow-lg shadow-[#39FF14]/25' : ''
+          }`}
+      >
+        <div className="group-hover:scale-110 transition-transform duration-300">
+          <Link className="w-5 h-5" />
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+
           </div>
 
           {/* Sidebar - Table of Contents */}

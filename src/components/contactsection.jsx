@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { Linkedin, Github, Twitter, Instagram } from 'lucide-react'
 
 const ContactSection = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -15,6 +16,8 @@ const ContactSection = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState('');
   const [focusedField, setFocusedField] = useState('');
+  const [hoveredSocial, setHoveredSocial] = useState('');
+
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -52,6 +55,13 @@ const ContactSection = () => {
       setTimeout(() => setSubmitStatus(''), 5000);
     }, 2000);
   };
+
+    const socialLinks = [
+    { name: 'Twitter', href: 'https://twitter.com/', icon: <Twitter className="w-5 h-5" /> },
+    { name: 'Github', href: 'https://github.com/', icon: <Github className="w-5 h-5" /> },
+    { name: 'Linkedin', href: 'https://linkedin.com/', icon: <Linkedin className="w-5 h-5" /> },
+    { name: 'Instagram', href: 'https://instagram.com/', icon: <Instagram className="w-5 h-5" /> },
+  ];
 
   const contactMethods = [
     {
@@ -404,36 +414,35 @@ const ContactSection = () => {
             </div>
 
             {/* Social Links */}
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8">
-              <h3 className="text-lg font-bold text-white mb-6 text-center">
-                Connect With Me
-              </h3>
-              
-              <div className="grid grid-cols-4 gap-1">
-                {[
-                  { name: 'LinkedIn', icon: '💼', color: 'from-blue-600 to-blue-400', url: '#' },
-                  { name: 'GitHub', icon: '💻', color: 'from-gray-600 to-gray-400', url: '#' },
-                  { name: 'Twitter', icon: '🐦', color: 'from-blue-400 to-cyan-400', url: '#' },
-                  { name: 'Instagram', icon: '📸', color: 'from-purple-500 to-pink-500', url: '#' }
-                ].map((social, index) => (
-                  <a
-                    key={social.name}
-                    href={social.url}
-                    className={`group p-1 pt-2 rounded-lg bg-gray-700/30 border border-gray-600/30 hover:border-[#39FF14]/50 hover:bg-gray-700/50 transition-all duration-300 hover:scale-105 text-center ${
-                      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}
-                    style={{ transitionDelay: `${1200 + index * 100}ms` }}
-                  >
-                    <div className={`w-7 h-7 bg-gradient-to-br ${social.color} rounded-lg flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform duration-300`}>
-                      <span className="text-sm">{social.icon}</span>
-                    </div>
-                    <span className="text-xs text-gray-300 group-hover:text-[#39FF14] transition-colors duration-300">
-                      {social.name}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </div>
+<div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8">
+  <h3 className="text-lg font-bold text-white mb-6 text-center">
+    Connect With Me
+  </h3>
+
+<div className="flex space-x-3">
+      {socialLinks.map((social) => (
+        <a
+          key={social.name}
+          href={social.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={social.name}
+          onMouseEnter={() => setHoveredSocial(social.name)}
+          onMouseLeave={() => setHoveredSocial('')}
+          className={`group p-3 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-gray-400 
+            hover:border-[#39FF14]/50 hover:text-[#39FF14] hover:bg-gray-700/30 hover:scale-110 
+            transition-all duration-300 ${
+              hoveredSocial === social.name ? 'shadow-lg shadow-[#39FF14]/25' : ''
+            }`}
+        >
+          <div className="group-hover:scale-110 transition-transform duration-300 text-lg">
+            {social.icon}
+          </div>
+        </a>
+      ))}
+    </div>
+</div>
+
           </div>
         </div>
 
