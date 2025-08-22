@@ -5,8 +5,7 @@ import BlogContent from '@/components/BlogContent';
 import BlogInteraction from '@/components/BlogInteraction';
 import BlogAuthor from '@/components/BlogAuthor';
 import RelatedArticles from '@/components/BlogRelated';
-import { getArticleBySlug, getArticleSlugs, getArticles } from '@/lib/database';
-
+import { getArticleBySlug, getArticleSlugs, getPublishedArticles } from '@/lib/database';
 // Pre-render all known slugs at build time
 export async function generateStaticParams() {
   const slugs = await getArticleSlugs();
@@ -44,7 +43,7 @@ export default async function ArticlePage({ params }) {
   if (!article) return notFound();
 
   // Fetch all articles for related articles component
-  const allArticles = await getArticles();
+  const allArticles = await getPublishedArticles();
 
   const blogData = {
     title: article.title,

@@ -1,8 +1,11 @@
-// src/app/api/admin/articles/route.js
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase'; // Use admin client
+// =====================================
+// FILE 9: app/api/admin/articles/route.js (UPDATE EXISTING)
+// =====================================
 
-// GET - Fetch all articles for admin
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+
+// GET - Fetch all articles for admin (including drafts)
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
@@ -17,6 +20,7 @@ export async function GET() {
         reading_time,
         featured_image,
         excerpt,
+        status,
         created_at,
         updated_at,
         article_interactions (
@@ -57,6 +61,8 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
+    console.log('Creating new article:', body.title);
+    
     // Validate required fields
     if (!body.title || !body.slug || !body.author || !body.content) {
       return NextResponse.json(
@@ -79,7 +85,7 @@ export async function POST(request) {
       );
     }
 
-    // Insert article
+    // Insert article with status
     const { data: article, error: articleError } = await supabaseAdmin
       .from('articles')
       .insert([{
@@ -91,14 +97,18 @@ export async function POST(request) {
         reading_time: body.readingTime || '5 min read',
         featured_image: body.featuredImage || null,
         excerpt: body.excerpt || '',
-        content: body.content
+        content: body.content,
+        status: body.status || 'draft'
       }])
       .select()
       .single();
 
     if (articleError) {
+      console.error('Article create error:', articleError);
       throw articleError;
     }
+
+    console.log('Article created with ID:', article.id);
 
     // Create initial interactions record
     const { error: interactionError } = await supabaseAdmin
@@ -115,7 +125,7 @@ export async function POST(request) {
 
     if (interactionError) {
       console.error('Error creating interactions:', interactionError);
-      // Don't fail the whole operation for this
+      // Don't fail the operation for this
     }
 
     // Transform response
@@ -126,11 +136,12 @@ export async function POST(request) {
       featuredImage: article.featured_image
     };
 
+    console.log('Article creation successful');
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error('Error creating article:', error);
     return NextResponse.json(
-      { error: 'Failed to create article' },
+      { error: 'Failed to create article: ' + error.message },
       { status: 500 }
     );
   }

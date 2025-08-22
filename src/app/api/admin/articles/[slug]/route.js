@@ -1,8 +1,11 @@
-// src/app/api/admin/articles/[slug]/route.js
+// =====================================
+// FILE 10: app/api/admin/articles/[slug]/route.js (UPDATE EXISTING)
+// =====================================
+
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// GET - Fetch single article for editing
+// GET - Fetch single article for editing (admin access - includes drafts)
 export async function GET(request, { params }) {
   try {
     const { slug } = await params;
@@ -54,7 +57,7 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT - Update article
+// PUT - Update article (now includes status)
 export async function PUT(request, { params }) {
   try {
     const { slug } = await params;
@@ -87,7 +90,7 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // Update article
+    // Update article with status
     const { data: article, error: updateError } = await supabaseAdmin
       .from('articles')
       .update({
@@ -100,6 +103,7 @@ export async function PUT(request, { params }) {
         featured_image: body.featuredImage || null,
         excerpt: body.excerpt || '',
         content: body.content,
+        status: body.status || 'published',
         updated_at: new Date().toISOString()
       })
       .eq('slug', slug)
@@ -131,26 +135,31 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('PUT: Error updating article:', error);
     return NextResponse.json(
-      { error: 'Failed to update article' },
+      { error: 'Failed to update article: ' + error.message },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Delete article
+// DELETE - Soft delete article (move to deleted_articles table)
 export async function DELETE(request, { params }) {
   try {
     const { slug } = await params;
-    console.log('DELETE: Deleting article with slug:', slug);
+    const body = await request.json();
+    const { reason = '', deletedBy = 'admin' } = body;
 
-    // Get article ID first
+    console.log('SOFT DELETE: Moving article to deleted_articles:', slug);
+
+    // Get the full article data including related data
     const { data: article, error: fetchError } = await supabaseAdmin
       .from('articles')
-      .select('id')
+      .select(`
+        *,
+        article_interactions (*),
+        comments (*)
+      `)
       .eq('slug', slug)
       .single();
-
-    console.log('DELETE: Found article:', { data: !!article, error: fetchError });
 
     if (fetchError) {
       if (fetchError.code === 'PGRST116') {
@@ -162,24 +171,50 @@ export async function DELETE(request, { params }) {
       throw fetchError;
     }
 
-    // Delete article (this will cascade delete interactions and comments due to foreign key constraints)
+    console.log('SOFT DELETE: Found article:', article.title);
+
+    // Move to deleted_articles table
+    const { error: moveError } = await supabaseAdmin
+      .from('deleted_articles')
+      .insert([{
+        original_article_id: article.id,
+        article_data: article,
+        deleted_by: deletedBy,
+        reason: reason
+      }]);
+
+    if (moveError) {
+      console.error('Error moving to deleted_articles:', moveError);
+      throw moveError;
+    }
+
+    console.log('SOFT DELETE: Moved to deleted_articles table');
+
+    // Delete from articles table (will cascade delete interactions and comments)
     const { error: deleteError } = await supabaseAdmin
       .from('articles')
       .delete()
       .eq('slug', slug);
 
-    console.log('DELETE: Delete result:', { error: deleteError });
-
     if (deleteError) {
+      console.error('Error deleting from articles:', deleteError);
       throw deleteError;
     }
 
-    console.log('DELETE: Success');
-    return NextResponse.json({ success: true, message: 'Article deleted successfully' });
+    console.log('SOFT DELETE: Success');
+    return NextResponse.json({ 
+      success: true, 
+      message: `Article "${article.title}" moved to trash successfully. It will be permanently deleted in 30 days.`,
+      deletedArticle: {
+        title: article.title,
+        slug: article.slug,
+        author: article.author
+      }
+    });
   } catch (error) {
-    console.error('DELETE: Error deleting article:', error);
+    console.error('SOFT DELETE: Error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete article' },
+      { error: 'Failed to delete article: ' + error.message },
       { status: 500 }
     );
   }

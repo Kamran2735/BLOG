@@ -1,3 +1,7 @@
+// =====================================
+// FILE 3: components/BlogEditor.js (REPLACE EXISTING)
+// =====================================
+
 "use client";
 import React, { useState } from 'react';
 import { 
@@ -17,13 +21,12 @@ import {
   Save,
   Eye,
   Edit3,
-  Lightbulb,
-  AlertTriangle,
+  Upload,
   CheckCircle
 } from 'lucide-react';
 
 const BlogEditor = ({ onSave, initialData = null }) => {
-  // Blog metadata state
+  // Blog metadata state with status
   const [metadata, setMetadata] = useState({
     title: initialData?.title || '',
     slug: initialData?.slug || '',
@@ -32,12 +35,65 @@ const BlogEditor = ({ onSave, initialData = null }) => {
     publishedDate: initialData?.publishedDate || new Date().toISOString().split('T')[0],
     readingTime: initialData?.readingTime || '',
     featuredImage: initialData?.featuredImage || '',
-    excerpt: initialData?.excerpt || ''
+    excerpt: initialData?.excerpt || '',
+    status: initialData?.status || 'draft'
   });
 
-  // Content sections state
   const [content, setContent] = useState(initialData?.content || []);
   const [previewMode, setPreviewMode] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Image upload handler
+  const handleImageUpload = async (file, sectionIndex = null) => {
+    if (!file) return null;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (metadata.slug) {
+        formData.append('articleSlug', metadata.slug);
+      }
+
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // If this is for a specific image section, update it
+      if (sectionIndex !== null) {
+        const newContent = [...content];
+        newContent[sectionIndex] = {
+          ...newContent[sectionIndex],
+          src: result.url,
+          alt: file.name.split('.')[0] // Use filename as default alt text
+        };
+        setContent(newContent);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image: ' + error.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Enhanced featured image upload
+  const handleFeaturedImageUpload = async (file) => {
+    const result = await handleImageUpload(file);
+    if (result?.success) {
+      setMetadata(prev => ({ ...prev, featuredImage: result.url }));
+    }
+  };
 
   // Add new section
   const addSection = (type) => {
@@ -126,16 +182,82 @@ const BlogEditor = ({ onSave, initialData = null }) => {
   const handleSave = () => {
     const blogPost = {
       ...metadata,
-      content,
-      interactions: {
-        reactions: { likes: 0, hearts: 0, laughs: 0, dislikes: 0 },
-        comments: [],
-        commentCount: 0,
-        lastUpdated: new Date().toISOString()
-      }
+      content
     };
     
     onSave(blogPost);
+  };
+
+  // Enhanced image section renderer
+  const renderImageSection = (section, index) => {
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-2 items-center">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                await handleImageUpload(file, index);
+              }
+            }}
+            className="hidden"
+            id={`image-upload-${index}`}
+          />
+          <label
+            htmlFor={`image-upload-${index}`}
+            className="flex items-center gap-2 px-4 py-2 bg-[#39FF14] text-black rounded cursor-pointer hover:bg-[#39FF14]/80 disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4" />
+            {uploading ? 'Uploading...' : 'Upload Image'}
+          </label>
+          <span className="text-sm text-gray-400">or enter URL below</span>
+        </div>
+        
+        <input
+          type="url"
+          placeholder="Or paste image URL"
+          value={section.src || ''}
+          onChange={(e) => updateSection(index, { ...section, src: e.target.value })}
+          className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#39FF14] focus:outline-none"
+        />
+        
+        <input
+          type="text"
+          placeholder="Alt text (important for accessibility)"
+          value={section.alt || ''}
+          onChange={(e) => updateSection(index, { ...section, alt: e.target.value })}
+          className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#39FF14] focus:outline-none"
+        />
+        
+        <input
+          type="text"
+          placeholder="Caption (optional)"
+          value={section.caption || ''}
+          onChange={(e) => updateSection(index, { ...section, caption: e.target.value })}
+          className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#39FF14] focus:outline-none"
+        />
+        
+        {section.src && (
+          <div className="border border-gray-600 rounded-lg overflow-hidden">
+            <img 
+              src={section.src} 
+              alt={section.alt || 'Preview'} 
+              className="max-w-full h-auto"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            {section.caption && (
+              <div className="p-3 bg-gray-800 text-sm text-gray-300 border-t border-gray-600">
+                <strong>Caption:</strong> {section.caption}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Render section editor based on type
@@ -166,13 +288,6 @@ const BlogEditor = ({ onSave, initialData = null }) => {
                 {...commonProps}
               />
             </div>
-            <input
-              type="text"
-              placeholder="ID (optional, auto-generated if empty)"
-              value={section.id || ''}
-              onChange={(e) => updateSection(index, { ...section, id: e.target.value })}
-              {...commonProps}
-            />
           </div>
         );
 
@@ -280,41 +395,13 @@ const BlogEditor = ({ onSave, initialData = null }) => {
               value={section.code}
               onChange={(e) => updateSection(index, { ...section, code: e.target.value })}
               rows={6}
-              className="font-mono text-sm"
-              {...commonProps}
+              className="font-mono text-sm w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-[#39FF14] focus:outline-none"
             />
           </div>
         );
 
       case 'image':
-        return (
-          <div className="space-y-3">
-            <input
-              type="url"
-              placeholder="Image URL"
-              value={section.src}
-              onChange={(e) => updateSection(index, { ...section, src: e.target.value })}
-              {...commonProps}
-            />
-            <input
-              type="text"
-              placeholder="Alt text"
-              value={section.alt}
-              onChange={(e) => updateSection(index, { ...section, alt: e.target.value })}
-              {...commonProps}
-            />
-            <input
-              type="text"
-              placeholder="Caption (optional)"
-              value={section.caption || ''}
-              onChange={(e) => updateSection(index, { ...section, caption: e.target.value })}
-              {...commonProps}
-            />
-            {section.src && (
-              <img src={section.src} alt={section.alt} className="max-w-xs rounded border" />
-            )}
-          </div>
-        );
+        return renderImageSection(section, index);
 
       case 'note':
         return (
@@ -515,17 +602,30 @@ const BlogEditor = ({ onSave, initialData = null }) => {
             </button>
           </div>
           
-          {/* Render preview using your existing BlogContent component structure */}
           <div className="prose prose-invert max-w-none">
             <h1 className="text-4xl font-bold mb-4">{metadata.title}</h1>
-            <div className="text-gray-400 mb-8">
-              By {metadata.author} • {metadata.readingTime} • {metadata.publishedDate}
+            <div className="text-gray-400 mb-8 flex items-center gap-4">
+              <span>By {metadata.author}</span>
+              <span>•</span>
+              <span>{metadata.readingTime}</span>
+              <span>•</span>
+              <span>{metadata.publishedDate}</span>
+              <span>•</span>
+              <span className={`px-2 py-1 rounded text-xs ${
+                metadata.status === 'published' ? 'bg-green-600' : 'bg-yellow-600 text-black'
+              }`}>
+                {metadata.status}
+              </span>
             </div>
             {content.map((section, index) => (
               <div key={index} className="mb-6">
-                {/* You would use your existing renderContent function here */}
-                <div className="p-4 border border-gray-600 rounded">
-                  <strong>{sectionTypeLabels[section.type]}</strong>: {JSON.stringify(section, null, 2)}
+                <div className="p-4 border border-gray-600 rounded bg-gray-800/30">
+                  <div className="text-[#39FF14] text-sm mb-2">
+                    {sectionTypeLabels[section.type]}
+                  </div>
+                  <pre className="text-xs text-gray-400 whitespace-pre-wrap">
+                    {JSON.stringify(section, null, 2)}
+                  </pre>
                 </div>
               </div>
             ))}
@@ -538,9 +638,18 @@ const BlogEditor = ({ onSave, initialData = null }) => {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
+        {/* Header with status indicator */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-[#39FF14]">Blog Editor</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-[#39FF14]">Blog Editor</h1>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              metadata.status === 'published' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-yellow-600 text-black'
+            }`}>
+              {metadata.status === 'published' ? 'Published' : 'Draft'}
+            </span>
+          </div>
           <div className="flex gap-4">
             <button
               onClick={() => setPreviewMode(true)}
@@ -551,16 +660,17 @@ const BlogEditor = ({ onSave, initialData = null }) => {
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-6 py-2 bg-[#39FF14] text-black rounded-lg hover:bg-[#39FF14]/80"
+              disabled={uploading}
+              className="flex items-center gap-2 px-6 py-2 bg-[#39FF14] text-black rounded-lg hover:bg-[#39FF14]/80 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              Save Article
+              {uploading ? 'Uploading...' : `Save as ${metadata.status}`}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Metadata Section */}
+          {/* Enhanced Metadata Section */}
           <div className="lg:col-span-1">
             <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-6 sticky top-6">
               <h2 className="text-xl font-bold mb-6 text-[#39FF14]">Article Metadata</h2>
@@ -586,6 +696,21 @@ const BlogEditor = ({ onSave, initialData = null }) => {
                     className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white"
                     placeholder="article-slug"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Status</label>
+                  <select
+                    value={metadata.status}
+                    onChange={(e) => handleMetadataChange('status', e.target.value)}
+                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {metadata.status === 'draft' ? 'Only visible to admins' : 'Visible to public'}
+                  </p>
                 </div>
 
                 <div>
@@ -632,14 +757,45 @@ const BlogEditor = ({ onSave, initialData = null }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Featured Image URL</label>
-                  <input
-                    type="url"
-                    value={metadata.featuredImage}
-                    onChange={(e) => handleMetadataChange('featuredImage', e.target.value)}
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white"
-                    placeholder="https://..."
-                  />
+                  <label className="block text-sm font-medium mb-2">Featured Image</label>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) handleFeaturedImageUpload(file);
+                        }}
+                        className="hidden"
+                        id="featured-image-upload"
+                      />
+                      <label
+                        htmlFor="featured-image-upload"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#39FF14] text-black rounded cursor-pointer hover:bg-[#39FF14]/80 text-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {uploading ? 'Uploading...' : 'Upload'}
+                      </label>
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="Or paste image URL"
+                      value={metadata.featuredImage}
+                      onChange={(e) => handleMetadataChange('featuredImage', e.target.value)}
+                      className="w-full p-3 bg-gray-800 border border-gray-600 rounded text-white"
+                    />
+                    {metadata.featuredImage && (
+                      <div className="border border-gray-600 rounded overflow-hidden">
+                        <img 
+                          src={metadata.featuredImage} 
+                          alt="Featured" 
+                          className="w-full max-w-xs"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
