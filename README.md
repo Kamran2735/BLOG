@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Project Status & Issues
 
-## Getting Started
+This repository contains our blog platform with features like reactions, roles, and an admin panel.  
+Currently, we are facing the following issues that need to be resolved:
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 1. Reactions Not Updating
+- **Problem:**  
+  Reactions (likes, etc.) on blog posts are not persisting.  
+  They appear to update in the UI, but after a page refresh or server restart, the values reset back to `0`.  
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Possible Cause:**  
+  The reaction updates are not being saved to the database correctly.  
+  Hardcoding values shows them temporarily, but nothing persists after refresh.  
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 2. Roles Not Fetching Properly
+- **Problem:**  
+  Roles are defined in both the database and authentication system.  
+  However, when logging in, the correct role is **not being fetched**.  
+  The system falls back to the **default role (`editor`)**, even if the user should have a higher role (e.g., `admin`).  
 
-## Learn More
+- **Expected Behavior:**  
+  Users with an `admin` role should be redirected to the **Admin Panel**.  
+  Currently, this is not happening because the role fetch seems to fail.  
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Next Steps
+- Debug database writes for reactions and confirm that changes persist.  
+- Verify the role-fetch logic during authentication.  
+- Ensure that the admin role condition correctly redirects users to the Admin Panel.  
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
