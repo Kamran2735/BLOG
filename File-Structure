@@ -1,0 +1,41 @@
+BLOG/
+├── .next/
+├── node_modules/
+├── public/
+├── scripts/
+│
+├── src/
+│   ├── app/
+│   │   ├── about/
+│   │   ├── admin/
+│   │   │   ├── api/
+│   │   │   │   ├── admin/
+│   │   │   │   │   ├── articles/
+│   │   │   │   │   ├── create-user/
+│   │   │   │   │   └── users/
+│   │   │   │   └── comments/
+│   │   │   └── articles/
+│   │   ├── articles/
+│   │   └── contact/
+│   │
+│   ├── components/
+│   ├── contexts/
+│   ├── data/
+│   ├── lib/
+│   │
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.js
+│   ├── not-found.js
+│   └── page.js
+│
+├── .env.local
+├── .gitignore
+├── eslint.config.mjs
+├── jsconfig.json
+├── middleware.js
+├── next.config.js
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+└── README.md

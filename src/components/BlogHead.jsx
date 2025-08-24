@@ -212,7 +212,7 @@ const BlogHead = ({ blogData }) => {
               <img
                 src={featuredImage}
                 alt={title || "article image"}
-                className="w-full h-64 sm:h-80 lg:h-96 object-cover transition-all duration-700 group-hover:scale-105"
+                className="w-full h-64 sm:h-80 lg:h-136 object-cover transition-all duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

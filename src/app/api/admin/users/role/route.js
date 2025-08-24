@@ -1,4 +1,9 @@
 // src/app/api/admin/users/role/route.js
+
+import { supabaseAdmin } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
+
+
 export async function PUT(request) {
   try {
     const currentUser = await verifyAdminAccess();

@@ -37,7 +37,7 @@ const BlogAuthor = () => {
     name: "Kamran Khan",
     title: "Full-Stack Developer & Tech Writer",
     bio: "Passionate about modern web technologies and creating developer-friendly content. I love breaking down complex concepts into digestible tutorials that help developers level up their skills.",
-    avatar: "/api/placeholder/120/120",
+avatar: "/avatar.jpg",
     location: "San Francisco, CA",
     joinDate: "2018-03-15",
     website: "https://kamrankhan.dev",
